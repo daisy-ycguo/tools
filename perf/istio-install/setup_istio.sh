@@ -54,6 +54,10 @@ elif [[ -n "${GCS_URL:-}" ]]; then
   RELEASE_URL="${GCS_URL}"
   OUT_FILE=${OUT_FILE:-"$(basename "${RELEASE_URL}" "-${ARCH_SUFFIX}.tar.gz")"}
 fi
+elif [[ -n "${LOCAL_DIR:-}" ]]; then
+  RELEASE_URL="${LOCAL_DIR}"
+  OUT_FILE="${LOCAL_DIR}"
+fi
 
 if [[ -z "${RELEASE_URL:-}" ]]; then
   echo "Must set one of TAG, VERSION, DEV_VERSION, RELEASE_URL, GCS_URL"
@@ -131,8 +135,9 @@ function install_extras() {
 
 if [[ -z "${SKIP_INSTALL}" ]];then
   if [[ -z "${LOCAL_ISTIO_PATH}" ]];then
-    download_release
-    install_istioctl "${DIRNAME}/${OUT_FILE}" "${@}"
+    # download_release
+    # install_istioctl "${DIRNAME}/${OUT_FILE}" "${@}"
+    install_istioctl "${OUT_FILE}" "${@}"
 
     if [[ -z "${SKIP_EXTRAS:-}" ]]; then
       install_extras
