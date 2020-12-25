@@ -51,13 +51,16 @@ export FORTIO_CLIENT_URL=""
 export GCS_BUCKET="istio-build/perf"
 export TRIALRUN=${TRIALRUN:-"False"}
 
+# Intel Env vars
+export GIT_BRANCH = "master"
+
 
 CLEANUP_PIDS=()
 
 # Step 1: setup cluster
 # shellcheck disable=SC1090
-source "${ROOT}/../bin/setup_cluster.sh"
-setup_e2e_cluster
+# source "${ROOT}/../bin/setup_cluster.sh"
+# setup_e2e_cluster
 
 # Step 2: install Istio
 # Setup release info

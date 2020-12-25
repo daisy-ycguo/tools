@@ -131,7 +131,7 @@ function install_extras() {
 
 if [[ -z "${SKIP_INSTALL}" ]];then
   if [[ -z "${LOCAL_ISTIO_PATH}" ]];then
-    download_release
+    # download_release
     install_istioctl "${DIRNAME}/${OUT_FILE}" "${@}"
 
     if [[ -z "${SKIP_EXTRAS:-}" ]]; then
