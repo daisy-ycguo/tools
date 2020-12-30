@@ -52,7 +52,8 @@ export GCS_BUCKET="istio-build/perf"
 export TRIALRUN=${TRIALRUN:-"False"}
 
 # Intel Env vars
-export GIT_BRANCH = "master"
+export GIT_BRANCH="master"
+export INSTALL_VERSION="/home/ubuntu/daisy/istio-1.8.1"
 
 
 CLEANUP_PIDS=()
@@ -72,11 +73,11 @@ fi
 
 # Different branch tag resides in dev release directory like /latest, /1.4-dev, /1.5-dev etc.
 INSTALL_VERSION=$(curl "https://storage.googleapis.com/istio-build/dev/${BRANCH}")
-echo "Setup istio release: ${INSTALL_VERSION}"
+#echo "Setup istio release: ${INSTALL_VERSION}"
 
-pushd "${ROOT}/istio-install"
-   DEV_VERSION=${INSTALL_VERSION} ./setup_istio.sh -f istioctl_profiles/default-overlay.yaml
-popd
+#pushd "${ROOT}/istio-install"
+#   DEV_VERSION=${INSTALL_VERSION} ./setup_istio.sh -f istioctl_profiles/default-overlay.yaml
+#popd
 
 # Step 3: setup Istio performance test
 pushd "${WD}"
@@ -86,10 +87,10 @@ popd
 
 # Step 4: install Python dependencies
 # Install pipenv
-if [[ $(command -v pipenv) == "" ]];then
-  apt-get update && apt-get -y install python3-pip
-  pip3 install pipenv
-fi
+#if [[ $(command -v pipenv) == "" ]];then
+#  apt-get update && apt-get -y install python3-pip
+#  pip3 install pipenv
+#fi
 
 # Install dependencies
 cd "${WD}"
@@ -142,7 +143,7 @@ function exit_handling() {
 
   # Copy raw data from fortio client pod
   kubectl --namespace "${NAMESPACE}" cp "${FORTIO_CLIENT_POD}":/var/lib/fortio /tmp/rawdata -c shell
-  gsutil -q cp -r /tmp/rawdata "gs://${GCS_BUCKET}/${OUTPUT_DIR}/rawdata"
+  # gsutil -q cp -r /tmp/rawdata "gs://${GCS_BUCKET}/${OUTPUT_DIR}/rawdata"
   # output information for debugging
   kubectl logs -n "${NAMESPACE}" "${FORTIO_CLIENT_POD}" -c captured || true
   kubectl top pods --containers -n "${NAMESPACE}" || true
@@ -157,7 +158,7 @@ trap exit_handling EXIT
 # Helper functions
 function collect_flame_graph() {
     FLAME_OUTPUT_DIR="${WD}/flame/flameoutput"
-    gsutil -q cp -r "${FLAME_OUTPUT_DIR}/*.svg" "gs://${GCS_BUCKET}/${OUTPUT_DIR}/flamegraphs"
+    # gsutil -q cp -r "${FLAME_OUTPUT_DIR}/*.svg" "gs://${GCS_BUCKET}/${OUTPUT_DIR}/flamegraphs"
 }
 
 function collect_metrics() {
@@ -168,7 +169,7 @@ function collect_metrics() {
 cpu_mili_avg_istio_proxy_fortioserver,cpu_mili_avg_istio_proxy_istio-ingressgateway,mem_Mi_avg_istio_proxy_fortioclient,\
 mem_Mi_avg_istio_proxy_fortioserver,mem_Mi_avg_istio_proxy_istio-ingressgateway
 
-  gsutil -q cp "${CSV_OUTPUT}" "gs://${GCS_BUCKET}/${OUTPUT_DIR}/benchmark.csv"
+  # gsutil -q cp "${CSV_OUTPUT}" "gs://${GCS_BUCKET}/${OUTPUT_DIR}/benchmark.csv"
 }
 
 function run_benchmark_test() {
@@ -201,7 +202,7 @@ function collect_envoy_info() {
 
   ENVOY_DUMP_NAME="${LOAD_GEN_TYPE}_${POD_NAME}_${CONFIG_NAME}_${FILE_SUFFIX}.yaml"
   kubectl exec -n "${NAMESPACE}" "${POD_NAME}" -c istio-proxy -- curl http://localhost:15000/"${FILE_SUFFIX}" > "${ENVOY_DUMP_NAME}"
-  gsutil -q cp -r "${ENVOY_DUMP_NAME}" "gs://${GCS_BUCKET}/${OUTPUT_DIR}/${FILE_SUFFIX}/${ENVOY_DUMP_NAME}"
+  # gsutil -q cp -r "${ENVOY_DUMP_NAME}" "gs://${GCS_BUCKET}/${OUTPUT_DIR}/${FILE_SUFFIX}/${ENVOY_DUMP_NAME}"
 }
 
 function collect_config_dump() {
@@ -218,7 +219,7 @@ function collect_pod_spec() {
   POD_NAME=${1}
   POD_SPEC_NAME="${LOAD_GEN_TYPE}_${POD_NAME}.yaml"
   kubectl get pods "${POD_NAME}" -n "${NAMESPACE}" -o yaml > "${POD_SPEC_NAME}"
-  gsutil -q cp -r "${POD_SPEC_NAME}" "gs://${GCS_BUCKET}/${OUTPUT_DIR}/pod_spec/${POD_SPEC_NAME}"
+  # gsutil -q cp -r "${POD_SPEC_NAME}" "gs://${GCS_BUCKET}/${OUTPUT_DIR}/pod_spec/${POD_SPEC_NAME}"
 }
 
 # Start run perf test
@@ -244,7 +245,7 @@ for dir in "${CONFIG_DIR}"/*; do
        extra_overlay="-f ${dir}/installation.yaml"
     fi
     pushd "${ROOT}/istio-install"
-      DEV_VERSION=${INSTALL_VERSION} ./setup_istio.sh -f istioctl_profiles/default-overlay.yaml "${extra_overlay}"
+       LOCAL_DIR=/home/ubuntu/daisy/istio-1.8.1 ./setup_istio.sh -f istioctl_profiles/default-overlay.yaml "${extra_overlay}"
     popd
 
     # Custom pre-run

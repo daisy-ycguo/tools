@@ -1,8 +1,8 @@
 prometheus:
   enabled: true
   deploy: true
-  memory: 32Gi
-  storage: 500Gi
+  memory: 16Gi
+  storage: 40Gi
 
 storageclass:
   deploy: true

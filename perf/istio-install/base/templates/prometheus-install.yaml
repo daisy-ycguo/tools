@@ -3,12 +3,9 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: ssd
-parameters:
-  type: pd-ssd
-provisioner: kubernetes.io/gce-pd
-reclaimPolicy: Delete
-volumeBindingMode: Immediate
+  name: local-disk
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
 {{- end}}
 ---
 # Source: prometheus-operator/templates/prometheus.yaml
@@ -57,7 +54,7 @@ spec:
         resources:
           requests:
             storage: {{ $.Values.prometheus.storage }}
-        storageClassName: ssd
+        storageClassName: local-disk
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
