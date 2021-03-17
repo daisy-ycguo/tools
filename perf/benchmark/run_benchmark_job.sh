@@ -51,6 +51,10 @@ export FORTIO_CLIENT_URL=""
 export GCS_BUCKET="istio-build/perf"
 export TRIALRUN=${TRIALRUN:-"False"}
 
+# Profiling Env vars
+PROFILING_ENABLED="${PROFILING_ENABLED:-"false"}"
+PROFILER="${PROFILER:-"cpu"}"
+PROFILING_POD="${PROFILER:-"server"}"
 
 CLEANUP_PIDS=()
 
@@ -218,6 +222,31 @@ function collect_pod_spec() {
   gsutil -q cp -r "${POD_SPEC_NAME}" "gs://${GCS_BUCKET}/${OUTPUT_DIR}/pod_spec/${POD_SPEC_NAME}"
 }
 
+function start_profiling() {
+  if [[ ${PROFILING_POD} = "server" ]]; then
+    PROFILING_POD=${FORTIO_SERVER_POD}
+  else
+    PROFILING_POD=${FORTIO_CLIENT_POD}
+  fi
+  kubectl exec -n "${NAMESPACE}" "${PROFILING_POD}" -c istio-proxy -- curl -X POST -s "http://localhost:15000/${PROFILER}profiler?enable=${1}"
+}
+
+function copy_profiling_data() {
+  # copy data
+  if [[ ! -a "${LOCAL_OUTPUT_DIR}/envoydata" ]]; then
+    mkdir ${LOCAL_OUTPUT_DIR}/envoydata
+  fi
+
+  if [[ "${1}" == "data" ]]; then
+    kubectl cp -n "${NAMESPACE}" "${PROFILING_POD}":/var/lib/istio/data/envoy.prof ${LOCAL_OUTPUT_DIR}/envoydata/${2}.prof -c istio-proxy
+  fi
+
+  if [[ "${1}" == "lib" ]]; then
+    kubectl cp -n "${NAMESPACE}" "${PROFILING_POD}":/lib/x86_64-linux-gnu ${LOCAL_OUTPUT_DIR}/envoydata/lib -c istio-proxy
+    kubectl cp -n "${NAMESPACE}" "${PROFILING_POD}":/usr/local/bin/envoy ${LOCAL_OUTPUT_DIR}/envoydata/lib/envoy -c istio-proxy
+  fi
+}
+
 # Start run perf test
 echo "Start to run perf benchmark test, all collected data will be dumped to GCS bucket: ${GCS_BUCKET}/${OUTPUT_DIR}"
 
@@ -225,6 +254,11 @@ echo "Start to run perf benchmark test, all collected data will be dumped to GCS
 CONFIG_DIR="${WD}/configs/istio"
 # Read through perf test configuration file to determine which group of test configuration to run or not run
 read_perf_test_conf "${WD}/configs/run_perf_test.conf"
+
+# start profiling before test
+if [[ ${PROFILING_ENABLED} ]]; then
+  start_profiling "y"
+fi
 
 for dir in "${CONFIG_DIR}"/*; do
     # Get the last directory name after splitting dir path by '/', which is the configuration dir name
@@ -292,11 +326,21 @@ for dir in "${CONFIG_DIR}"/*; do
     collect_flame_graph
     # TODO: can be added to shared_postrun.sh
 
+    if [[ ${PROFILING_ENABLED} ]]; then
+      copy_profiling_data "data" "${config_name}"
+    fi
+
     # restart proxy after each group
     kubectl exec -n "${NAMESPACE}" "${FORTIO_CLIENT_POD}" -c istio-proxy -- curl http://localhost:15000/quitquitquit -X POST
     kubectl exec -n "${NAMESPACE}" "${FORTIO_SERVER_POD}" -c istio-proxy -- curl http://localhost:15000/quitquitquit -X POST
 
     popd
 done
+
+# start profiling before test
+if [[ ${PROFILING_ENABLED} ]]; then
+  copy_profiling_data "lib"
+  start_profiling "n"
+fi
 
 echo "Istio performance benchmark test is done!"
